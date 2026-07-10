@@ -6,8 +6,9 @@ spring:
     name: gateway
   cloud:
     gateway:
-      routes:
-        - id: payments-route
-          uri: http://payments-api:8080
-          predicates:
-            - Path=/api/v1/payments/**
+      mvc:
+        routes:
+          - id: payments-route
+            uri: http://payments-api:8080
+            predicates:
+              - Path=/api/v1/payments, /api/v1/payments/**
