@@ -31,10 +31,12 @@
 		<spring-cloud.version>2025.1.2</spring-cloud.version>
 	</properties>
 	<dependencies>
+		<!-- MVC (Servlet-based) web stack — required by gateway-server-webmvc -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-webflux</artifactId>
+			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
+		<!-- Spring Cloud Gateway MVC — servlet-based, compatible with Spring Boot 4.x -->
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-gateway-server-webmvc</artifactId>
@@ -42,7 +44,7 @@
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-webflux-test</artifactId>
+			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

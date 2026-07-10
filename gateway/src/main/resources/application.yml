@@ -6,9 +6,14 @@ spring:
     name: gateway
   cloud:
     gateway:
-      mvc:
-        routes:
-          - id: payments-route
-            uri: http://payments-api:8080
-            predicates:
-              - Path=/api/v1/payments, /api/v1/payments/**
+      server:
+        webmvc:
+          routes:
+            - id: payments-route
+              uri: http://payments-api:8080
+              predicates:
+                - Path=/api/v1/payments,/api/v1/payments/**
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
