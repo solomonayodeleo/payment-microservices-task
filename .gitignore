@@ -1,7 +1,8 @@
 ### OS ###
 .DS_Store
+Thumbs.db
 
-### Maven ###
+### Maven & Gradle ###
 target/
 pom.xml.tag
 pom.xml.releaseBackup
@@ -11,9 +12,10 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
-# We DO NOT ignore .mvn/wrapper/maven-wrapper.properties
-# But we DO ignore the downloaded jar
 .mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+*.war
 
 ### IDEs ###
 .idea/
@@ -22,6 +24,13 @@ buildNumber.properties
 *.ipr
 out/
 .vscode/
+
+### Node / Frontend ###
+node_modules/
+dist/
+
+### Python ###
+*.py[cod]
 
 ### Logs ###
 *.log
@@ -32,6 +41,22 @@ out/
 *.pem
 k8s/secrets.yaml
 
+### Test Reports ###
+TEST*.xml
+
+### Applications ###
+*.app
+*.exe
+
+### Large media files ###
+*.mp4
+*.tiff
+*.avi
+*.flv
+*.mov
+*.wmv
+
 ### Custom Project Files ###
 payment-processing-assignment/*
 Plan.md
+
