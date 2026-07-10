@@ -30,7 +30,14 @@ public class SettlementListener {
                     Thread.currentThread().interrupt();
                 }
 
-                System.out.println("✅ [SETTLEMENT WORKER] Settlement Processed Successfully!\n");
+                // Simulate Failure Condition for Saga Pattern
+                if (payload.contains("\"accountId\":\"user-fail\"")) {
+                    System.err.println("❌ [SETTLEMENT WORKER] Settlement FAILED for payload: " + payload);
+                    System.out.println("🔄 [SETTLEMENT WORKER] Triggering Compensating Transaction (payments.reversed)...");
+                    natsConnection.publish("payments.reversed", payload.getBytes(StandardCharsets.UTF_8));
+                } else {
+                    System.out.println("✅ [SETTLEMENT WORKER] Settlement Processed Successfully!\n");
+                }
             });
 
             // 3. Subscribe to the exact subject the Payments API is broadcasting

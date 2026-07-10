@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 
 
 @RestController
@@ -20,6 +21,16 @@ public class AccountController {
             "accountId", accountId,
             "balance", new BigDecimal("10000.00"),
             "currency", "NGN"
+        );
+    }
+
+    @PostMapping("/{accountId}/refund")
+    public Map<String, Object> refund(@PathVariable String accountId, @org.springframework.web.bind.annotation.RequestBody Map<String, Object> request) {
+        BigDecimal amount = new BigDecimal(request.get("amount").toString());
+        System.out.println("✅ [LEDGER MOCK] Refunded " + amount + " to account " + accountId);
+        return Map.of(
+            "status", "SUCCESS",
+            "message", "Refund processed successfully"
         );
     }
 
