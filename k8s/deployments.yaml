@@ -1,0 +1,127 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      containers:
+      - name: gateway
+        image: gateway:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: gateway
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payments-api
+  template:
+    metadata:
+      labels:
+        app: payments-api
+    spec:
+      containers:
+      - name: payments-api
+        image: payments-api:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payments-api
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: payments-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ledger-mock
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ledger-mock
+  template:
+    metadata:
+      labels:
+        app: ledger-mock
+    spec:
+      containers:
+      - name: ledger-mock
+        image: ledger-mock:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ledger-mock
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: ledger-mock
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: settlement-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: settlement-worker
+  template:
+    metadata:
+      labels:
+        app: settlement-worker
+    spec:
+      containers:
+      - name: settlement-worker
+        image: settlement-worker:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: settlement-worker
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: settlement-worker
