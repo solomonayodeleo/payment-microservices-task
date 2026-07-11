@@ -42,73 +42,28 @@ At its core, the system processes a payment by decoupling the immediate user exp
 
 ## Architecture
 
-### System Architecture Layout
-```text
-Ingress (NGINX) @ payments.local  ← minikube tunnel → ingress-nginx:443
-   |
-   v
-payment-api-service:8080
-   |--> ledger-service:8081       (Linkerd mTLS — app sees plain http)
-   |--> settlement-mock:8082      (Linkerd mTLS — app sees plain http)
-   |--> redis:6379
-   |--> postgres-payment:5432
-   |--> jaeger-service:4318
-   |
-ledger-service:8081
-   |--> postgres-ledger:5432
-   |--> jaeger-service:4318
-   |
-Observability Stack
-   |--> prometheus-service:9090
-   |--> grafana-service:3000      (datasource: prometheus + jaeger)
-   |--> jaeger-service:16686      (trace collector + UI)
-   |
-Linkerd control plane + viz
-   |--> Sidecars injected into every fintech namespace pod
-        All pod-to-pod traffic automatically wrapped in mTLS
-```
-
 ### System Architecture Diagram
-```mermaid
-graph TD
-    %% Client & Ingress Routing
-    Client[Client Browser / curl] -->|payments.local| Tunnel[minikube tunnel]
-    Tunnel -->|Port 443| Ingress[Ingress NGINX Controller]
-    Ingress -->|HTTP Port 8080| API[payment-api-service]
 
-    %% Payment API Service dependencies
-    subgraph ServiceMesh ["Service Mesh (Linkerd mTLS)"]
-        API -->|mTLS| Ledger[ledger-service:8081]
-        API -->|mTLS| Settlement[settlement-mock:8082]
-    end
+![System Architecture Diagram](docs/architecture.png)
 
-    API -->|Port 6379| Redis[(redis)]
-    API -->|Port 5432| PG_Pay[(postgres-payment)]
-    API -->|OTLP Port 4318| Jaeger["jaeger-service:16686 UI / 4318 Collector"]
+### High-Level Component Layout
 
-    %% Ledger Service dependencies
-    Ledger -->|Port 5432| PG_Ledger[(postgres-ledger)]
-    Ledger -->|OTLP Port 4318| Jaeger
-
-    %% Observability and Viz
-    subgraph ObservabilityStack ["Observability Stack"]
-        Prometheus[prometheus-service:9090]
-        Grafana[grafana-service:3000]
-    end
-
-    Prometheus -->|Scrape metrics| API
-    Prometheus -->|Scrape metrics| Ledger
-    Prometheus -->|Scrape metrics| Settlement
-    Grafana -->|Datasource| Prometheus
-    Grafana -->|Datasource| Jaeger
-
-    %% Linkerd annotation
-    subgraph LinkerdControlPlane ["Linkerd Control Plane"]
-        Sidecar[Linkerd Pod Sidecars]
-    end
-    Sidecar -.->|Injects mTLS proxy into| API
-    Sidecar -.->|Injects mTLS proxy into| Ledger
-    Sidecar -.->|Injects mTLS proxy into| Settlement
+```text
+[ Client ] ---> [ NGINX Ingress ] ---> [ API Gateway ]
+                                             │
+                                             ▼
+                                     [ Payments API ]
+                                       │   │   │
+                  Idempotency Check ◄──┘   │   └──► Sync REST Call 
+                    [ Redis ]              │        [ Ledger Mock ]
+                                           ▼
+                                Async Pub/Sub Event
+                                    [ NATS Broker ]
+                                           │
+                                           ▼
+                                 [ Settlement Worker ]
+                                 
+(All services scraped by Prometheus → Visualised in Grafana)
 ```
 
 ### Request Flow — Step by Step
