@@ -22,17 +22,21 @@
 
 ## Project Overview
 
-This project simulates a real-world **fintech payment processing system** composed of four independent microservices that communicate over HTTP and asynchronous messaging (NATS). It is fully containerised with Docker and orchestrated on a local Kubernetes cluster via [Kind](https://kind.sigs.k8s.io/).
+This project simulates a real-world **fintech payment processing system** designed to handle high-volume financial transactions. It is composed of four independent microservices that communicate via a hybrid of synchronous REST APIs and asynchronous event-driven messaging (NATS). The entire stack is fully containerised with Docker and orchestrated on a local Kubernetes cluster via [Kind](https://kind.sigs.k8s.io/).
 
-**Core capabilities demonstrated:**
+### The Business Domain (How it Works)
+At its core, the system processes a payment by decoupling the immediate user experience from the heavy backend settlement process:
+1. **Authorization (Synchronous):** When a user initiates a payment, the system must immediately verify if they have sufficient funds. It makes a direct, synchronous call to a mock banking ledger. If the ledger confirms the funds, the system "reserves" the money and instantly returns a success response to the user. This ensures the user isn't kept waiting.
+2. **Settlement (Asynchronous):** After a successful reservation, the system publishes a `payments.completed` event to a message broker (NATS). A background worker consumes this event and performs the actual financial settlement.
+3. **Compensation (The Saga Pattern):** If the background settlement fails for any reason (e.g., a network error or ledger rejection), the system automatically triggers a compensating transaction (a `payments.reversed` event) to refund the reserved money back to the user's account. This ensures absolute data consistency without relying on traditional distributed database locks.
 
-- API Gateway pattern with route-based proxying
-- Synchronous inter-service HTTP calls (payments → ledger)
-- Asynchronous event-driven processing (payments → NATS → settlement worker)
-- Saga Pattern for distributed transactions and compensation (rollback)
-- State management with Redis (deployed as a StatefulSet with 3 replicas)
-- Observability and monitoring with Prometheus and Grafana
-- Kubernetes-native deployment with NGINX Ingress and Secrets
+### Core Architecture & Capabilities Demonstrated
+- **API Gateway Pattern:** Using Spring Cloud Gateway to provide a single, unified entry point for all client requests, hiding the internal microservice topology.
+- **Idempotency:** Utilizing Redis to ensure that duplicate payment requests (e.g., a user double-clicking a "Pay" button) are caught and safely ignored.
+- **Fault Tolerance:** Implementing Circuit Breakers (Resilience4j) around synchronous HTTP calls. If the ledger service goes down, the payment API gracefully fails fast rather than hanging and consuming system resources.
+- **Asynchronous Messaging:** Using NATS as a high-performance message broker to decouple services and enable the Saga compensation pattern.
+- **Observability:** Instrumenting all services with Micrometer and OpenTelemetry, exposing metrics to a Prometheus and Grafana stack to monitor Request Rates, Error Rates, and Durations (RED metrics) in real-time.
+- **Cloud-Native Deployment:** Deploying the entire ecosystem to Kubernetes with NGINX Ingress, StatefulSets for Redis, and encrypted Secrets for credentials.
 
 ---
 
@@ -512,8 +516,18 @@ kubectl logs deployment/settlement-worker -f
 kubectl get services
 ```
 
-### Tear down the cluster
+### Cleanup Resources
 
+To ensure **all** resources are completely removed and shut down:
+
+**1. Destroy the Kubernetes Cluster**
+This command instantly shuts down and deletes the `Kind` Docker containers that simulate the cluster nodes, taking down all running pods (Redis, NATS, microservices, etc.) with it.
 ```bash
 kind delete cluster --name ds-lab
+```
+
+**2. Remove the Local Docker Images (Optional)**
+The `build-and-load-images.sh` script built images locally on your host machine. To free up disk space, you can delete them:
+```bash
+docker rmi gateway:latest payments-api:latest ledger-mock:latest settlement-worker:latest
 ```
