@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
@@ -32,7 +33,7 @@ public class PaymentController {
     private final CircuitBreaker circuitBreaker;
     private Connection natsConnection;
 
-    public PaymentController(StringRedisTemplate redisTemplate) {
+    public PaymentController(StringRedisTemplate redisTemplate, @Value("${NATS_URL:nats://nats:4222}") String natsUrl) {
         this.restClient = RestClient.create("http://ledger-mock:8080");
         this.redisTemplate = redisTemplate;
         
@@ -46,7 +47,7 @@ public class PaymentController {
         
         // Connect to our NATS post office!
         try {
-            this.natsConnection = Nats.connect("nats://nats:4222");
+            this.natsConnection = Nats.connect(natsUrl);
         } catch (Exception e) {
             System.err.println("Failed to connect to NATS: " + e.getMessage());
         }

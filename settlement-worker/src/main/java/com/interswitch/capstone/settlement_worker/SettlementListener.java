@@ -4,6 +4,7 @@ import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
 import io.nats.client.Nats;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 
@@ -11,12 +12,17 @@ import java.nio.charset.StandardCharsets;
 public class SettlementListener {
 
     private Connection natsConnection;
+    private final String natsUrl;
+    
+    public SettlementListener(@Value("${NATS_URL:nats://nats:4222}") String natsUrl) {
+        this.natsUrl = natsUrl;
+    }
 
     @PostConstruct
     public void init() {
         try {
             // 1. Connect to NATS
-            this.natsConnection = Nats.connect("nats://nats:4222");
+            this.natsConnection = Nats.connect(natsUrl);
 
             // 2. Create a dispatcher to listen for messages
             Dispatcher dispatcher = natsConnection.createDispatcher((msg) -> {

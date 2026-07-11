@@ -5,6 +5,7 @@ import io.nats.client.Dispatcher;
 import io.nats.client.Nats;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.beans.factory.annotation.Value;
 import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -14,16 +15,18 @@ public class PaymentReversalListener {
 
     private Connection natsConnection;
     private final RestClient restClient;
+    private final String natsUrl;
 
-    public PaymentReversalListener() {
+    public PaymentReversalListener(@Value("${NATS_URL:nats://nats:4222}") String natsUrl) {
         this.restClient = RestClient.create("http://ledger-mock:8080");
+        this.natsUrl = natsUrl;
     }
 
     @PostConstruct
     public void init() {
         try {
             // 1. Connect to NATS
-            this.natsConnection = Nats.connect("nats://nats:4222");
+            this.natsConnection = Nats.connect(natsUrl);
 
             // 2. Create dispatcher for reversing payments
             Dispatcher dispatcher = natsConnection.createDispatcher((msg) -> {

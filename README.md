@@ -29,8 +29,10 @@ This project simulates a real-world **fintech payment processing system** compos
 - API Gateway pattern with route-based proxying
 - Synchronous inter-service HTTP calls (payments → ledger)
 - Asynchronous event-driven processing (payments → NATS → settlement worker)
+- Saga Pattern for distributed transactions and compensation (rollback)
 - State management with Redis (deployed as a StatefulSet with 3 replicas)
-- Kubernetes-native deployment with NGINX Ingress
+- Observability and monitoring with Prometheus and Grafana
+- Kubernetes-native deployment with NGINX Ingress and Secrets
 
 ---
 
@@ -204,17 +206,29 @@ Creates a Kind cluster named `ds-lab` with port 80 exposed on localhost, then in
 bash setup-cluster.sh
 ```
 
-### 3. Deploy infrastructure
+### 3. Configure Kubernetes Secrets
+
+The application expects a `secrets.yaml` file containing Base64 encoded credentials for NATS and Redis. This file is ignored by git to prevent accidental commits.
+
+To set it up, copy the provided example template:
+```bash
+cp k8s/secrets.example.yaml k8s/secrets.yaml
+```
+*(If you change passwords, update the base64 values in `secrets.yaml` accordingly).*
+
+### 4. Deploy infrastructure
 
 ```bash
+kubectl apply -f k8s/secrets.yaml
 kubectl apply -f k8s/redis.yaml
 kubectl apply -f k8s/nats.yaml
+kubectl apply -f k8s/observability.yaml
 
 # Wait until all Redis pods are Running
 kubectl get pods -w
 ```
 
-### 4. Build and load all service images
+### 5. Build and load all service images
 
 **macOS / Linux:**
 ```bash
@@ -230,14 +244,14 @@ bash build-and-load-images.sh
 
 > If `bash` is not available on Windows, use [Git Bash](https://git-scm.com/downloads) or [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) to run the shell script.
 
-### 5. Deploy services and Ingress
+### 6. Deploy services and Ingress
 
 ```bash
 kubectl apply -f k8s/deployments.yaml
 kubectl apply -f k8s/ingress.yaml
 ```
 
-### 6. Verify all pods are Running
+### 7. Verify all pods are Running
 
 ```bash
 kubectl get pods
@@ -288,6 +302,28 @@ kubectl logs deployment/settlement-worker --tail=5
 ✅ [SETTLEMENT WORKER] Settlement Processed Successfully!
 ```
 
+### Saga Pattern Compensation (Failure Simulation)
+
+If the settlement fails (simulated here by using account ID `user-fail`), the worker automatically triggers a compensating transaction to reverse the payment.
+
+```bash
+curl -s \
+  -H "Host: payments.local" \
+  -H "Content-Type: application/json" \
+  -d '{"accountId": "user-fail", "amount": 100}' \
+  http://localhost/api/v1/payments | jq .
+```
+
+Verify the failure and automated rollback via the `payments.reversed` event:
+
+```bash
+kubectl logs deployment/settlement-worker --tail=5
+# Output will show the failure and compensation trigger
+
+kubectl logs deployment/payments-api --tail=5
+# Output will show the API receiving the reversal and issuing a refund to ledger-mock
+```
+
 ### Insufficient funds
 
 ```bash
@@ -304,6 +340,26 @@ curl -s \
   "reason": "Insufficient Funds"
 }
 ```
+
+---
+
+## Observability
+
+All Spring Boot microservices are instrumented with **Micrometer** and **OpenTelemetry**. Metrics are continuously scraped by a local Prometheus instance and visualized in Grafana.
+
+To access the observability stack:
+
+1. **Prometheus:** 
+   ```bash
+   kubectl port-forward svc/prometheus 9090:9090
+   ```
+   Open `http://localhost:9090` in your browser.
+   
+2. **Grafana:**
+   ```bash
+   kubectl port-forward svc/grafana 3000:3000
+   ```
+   Open `http://localhost:3000` in your browser. (No login required, anonymous admin access is enabled). You can add `http://prometheus:9090` as a Prometheus data source and start building RED metric dashboards (Request Rate, Error Rate, and Duration) using the exposed `/actuator/prometheus` data.
 
 ---
 
@@ -362,6 +418,8 @@ The only externally exposed endpoint. Routed via Gateway → payments-api.
 | `k8s/ingress.yaml` | NGINX Ingress — routes `payments.local` → gateway |
 | `k8s/nats.yaml` | NATS message broker Deployment + Service (port 4222) |
 | `k8s/redis.yaml` | Redis StatefulSet (3 replicas) + Headless Service |
+| `k8s/secrets.yaml` | Holds base64 encoded credentials (generated from `secrets.example.yaml`) |
+| `k8s/observability.yaml` | Deploys Prometheus and Grafana for metrics visualization |
 
 ---
 
