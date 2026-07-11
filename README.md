@@ -423,6 +423,43 @@ The only externally exposed endpoint. Routed via Gateway → payments-api.
 
 ---
 
+## Local Environment Tips
+
+If you experience instability locally:
+- **Resource Limits:** Running 4 Java Spring Boot microservices alongside Redis, NATS, Prometheus, and Grafana demands significant memory. Ensure Docker Desktop is allocated at least **4GB to 8GB of RAM**.
+- **Port Conflicts:** Ensure ports `80` (Ingress), `3000` (Grafana), and `9090` (Prometheus) are not already in use on your host machine.
+
+---
+
+## Path to Production & Cloud Scaling
+
+This repository is designed as a foundational local prototype. If you intend to take this architecture to production or scale it in the cloud, consider the following upgrades:
+
+### 1. Managed Kubernetes
+Migrate from the local `Kind` cluster to a managed Kubernetes service such as **Amazon EKS**, **Google GKE**, or **Azure AKS**. This provides built-in high availability across multiple availability zones and simplifies cluster upgrades.
+
+### 2. Managed Backing Services
+Running stateful services (like NATS and Redis) inside Kubernetes requires careful management of Persistent Volumes. For production:
+- Replace the in-cluster Redis StatefulSet with a managed cache like **AWS ElastiCache** or **GCP Memorystore**.
+- Replace the NATS pods with a managed message broker service such as **Confluent Cloud (Kafka)**, **AWS MSK**, or native cloud queues like **Amazon SQS / SNS**.
+- Swap the `ledger-mock` with a highly durable relational database like **Amazon Aurora (PostgreSQL)**.
+
+### 3. Horizontal Scaling & Autoscaling
+To handle high transaction volumes:
+- Configure **Horizontal Pod Autoscalers (HPA)** for `payments-api` and `settlement-worker` to scale replicas automatically based on CPU usage or custom metrics (e.g., NATS queue length).
+- Ensure the API Gateway is properly scaled and placed behind a highly available Cloud Load Balancer instead of relying solely on a NodePort or local Ingress.
+
+### 4. Externalized Configuration & Security
+- Instead of using static Kubernetes Secrets (`secrets.yaml`), integrate a dynamic secrets manager like **HashiCorp Vault**, **AWS Secrets Manager**, or use the **External Secrets Operator** to securely sync credentials.
+- Implement mutual TLS (mTLS) between microservices using a service mesh like **Istio** or **Linkerd**.
+
+### 5. CI/CD & GitOps
+Replace manual `kubectl apply` commands with a declarative deployment pipeline:
+- Use **GitHub Actions** or **GitLab CI** to automatically build and push Docker images to a registry (e.g., ECR, GCR).
+- Use **ArgoCD** or **Flux** for GitOps, ensuring your Kubernetes cluster state automatically matches your repository configuration.
+
+---
+
 ## Development Workflow
 
 ### Rebuild and redeploy a single service
